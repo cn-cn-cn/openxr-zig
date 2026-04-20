@@ -906,10 +906,9 @@ const Renderer = struct {
         if (std.mem.eql(u8, basename, "VkBool32")) {
             try self.renderAssign(name);
             try self.writer.writeAll(
-                \\enum(i32) {
+                \\enum(u32) {
                 \\    false,
                 \\    true,
-                \\    _,
                 \\};
                 \\
             );
