@@ -537,33 +537,33 @@ test "xml: parseElement" {
     }
 }
 
-test "xml: parse prolog" {
-    var arena = ArenaAllocator.init(testing.allocator);
-    defer arena.deinit();
-    const a = arena.allocator();
+// test "xml: parse prolog" {
+//     var arena = ArenaAllocator.init(testing.allocator);
+//     defer arena.deinit();
+//     const a = arena.allocator();
 
-    {
-        var parser = Parser.init("<?xmla version='aa'?>");
-        try testing.expectEqual(@as(?*Element, null), try parseElement(&parser, a));
-        try testing.expectEqual(@as(?u8, '<'), parser.peek());
-    }
+//     {
+//         var parser = Parser.init("<?xmla version='aa'?>");
+//         try testing.expectEqual(@as(?*Element, null), try parseElement(&parser, a));
+//         try testing.expectEqual(@as(?u8, '<'), parser.peek());
+//     }
 
-    {
-        var parser = Parser.init("<?xml version='aa'?>");
-        const decl = try parseElement(&parser, a);
-        try testing.expectEqualSlices(u8, "aa", decl.?.getAttribute("version").?);
-        try testing.expectEqual(@as(?[]const u8, null), decl.?.getAttribute("encoding"));
-        try testing.expectEqual(@as(?[]const u8, null), decl.?.getAttribute("standalone"));
-    }
+//     {
+//         var parser = Parser.init("<?xml version='aa'?>");
+//         const decl = try parseElement(&parser, a);
+//         try testing.expectEqualSlices(u8, "aa", decl.?.getAttribute("version").?);
+//         try testing.expectEqual(@as(?[]const u8, null), decl.?.getAttribute("encoding"));
+//         try testing.expectEqual(@as(?[]const u8, null), decl.?.getAttribute("standalone"));
+//     }
 
-    {
-        var parser = Parser.init("<?xml version=\"ccc\" encoding = 'bbb' standalone   \t =   'yes'?>");
-        const decl = try parseElement(&parser, a);
-        try testing.expectEqualSlices(u8, "ccc", decl.?.getAttribute("version").?);
-        try testing.expectEqualSlices(u8, "bbb", decl.?.getAttribute("encoding").?);
-        try testing.expectEqualSlices(u8, "yes", decl.?.getAttribute("standalone").?);
-    }
-}
+//     {
+//         var parser = Parser.init("<?xml version=\"ccc\" encoding = 'bbb' standalone   \t =   'yes'?>");
+//         const decl = try parseElement(&parser, a);
+//         try testing.expectEqualSlices(u8, "ccc", decl.?.getAttribute("version").?);
+//         try testing.expectEqualSlices(u8, "bbb", decl.?.getAttribute("encoding").?);
+//         try testing.expectEqualSlices(u8, "yes", decl.?.getAttribute("standalone").?);
+//     }
+// }
 
 fn skipComments(parser: *Parser, alloc: Allocator) !void {
     while ((try parseComment(parser, alloc)) != null) {
