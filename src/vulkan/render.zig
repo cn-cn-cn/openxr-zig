@@ -80,17 +80,16 @@ const preamble =
     \\        }
     \\    };
     \\}
-    \\pub const Version = packed struct(u32) {
-    \\    patch: u12,
-    \\    minor: u10,
-    \\    major: u7,
-    \\    variant: u3,
+    \\pub const Version = packed struct(u64) {
+    \\    patch: u32,
+    \\    minor: u16,
+    \\    major: u16,
     \\    pub fn toU32(ver: Version) u32 {
     \\        return @bitCast(ver);
     \\    }
     \\};
-    \\pub fn makeApiVersion(variant: u3, major: u7, minor: u10, patch: u12) Version {
-    \\    return .{ .variant = variant, .major = major, .minor = minor, .patch = patch };
+    \\pub fn makeApiVersion(major: u7, minor: u10, patch: u12) Version {
+    \\    return .{ .major = major, .minor = minor, .patch = patch };
     \\}
     \\pub const ApiInfo = struct {
     \\    name: [:0]const u8 = "custom",
@@ -185,41 +184,64 @@ const builtin_types = std.StaticStringMap([]const u8).initComptime(.{
     .{ "int", @typeName(c_int) },
 });
 
+
 const foreign_types = std.StaticStringMap([]const u8).initComptime(.{
     .{ "Display", "opaque {}" },
     .{ "VisualID", @typeName(c_uint) },
     .{ "Window", @typeName(c_ulong) },
-    .{ "RROutput", @typeName(c_ulong) },
-    .{ "wl_display", "opaque {}" },
-    .{ "wl_surface", "opaque {}" },
-    .{ "HINSTANCE", "std.os.windows.HINSTANCE" },
-    .{ "HWND", "std.os.windows.HWND" },
-    .{ "HMONITOR", "*opaque {}" },
-    .{ "HANDLE", "std.os.windows.HANDLE" },
-    .{ "SECURITY_ATTRIBUTES", "std.os.windows.SECURITY_ATTRIBUTES" },
-    .{ "DWORD", "std.os.windows.DWORD" },
-    .{ "LPCWSTR", "std.os.windows.LPCWSTR" },
+    .{ "xcb_glx_fbconfig_t", "opaque {}" },
+    .{ "xcb_glx_drawable_t", "opaque {}" },
+    .{ "xcb_glx_context_t", "opaque {}" },
     .{ "xcb_connection_t", "opaque {}" },
     .{ "xcb_visualid_t", @typeName(u32) },
     .{ "xcb_window_t", @typeName(u32) },
-    .{ "zx_handle_t", @typeName(u32) },
-    .{ "_screen_context", "opaque {}" },
-    .{ "_screen_window", "opaque {}" },
-    .{ "IDirectFB", "opaque {}" },
-    .{ "IDirectFBSurface", "opaque {}" },
-    .{ "NvSciSyncAttrList", "*opaque{}" },
-    .{ "NvSciSyncObj", "*opaque{}" },
-    .{ "NvSciSyncFence", "*opaque{}" },
-    .{ "NvSciBufAttrList", "*opaque{}" },
-    .{ "NvSciBufObj", "*opaque{}" },
-    // We don't know the true size of these but whatever Stadia is dead anyway.
-    .{ "GgpStreamDescriptor", "*opaque{}" },
-    .{ "GgpFrameToken", "*opaque{}" },
-    // The Vulkan Video tokens cannot be "opaque {}" and have to be handled
-    // separately.
-    .{ "StdVideoVP9Profile", "u32" },
-    .{ "StdVideoVP9Level", "u32" },
+    .{ "VkAllocationCallbacks", "@import(\"vulkan\").AllocationCallbacks" },
+    .{ "VkDevice", "@import(\"vulkan\").Device" },
+    .{ "VkDeviceCreateInfo", "@import(\"vulkan\").DeviceCreateInfo" },
+    .{ "VkFormat", "@import(\"vulkan\").Format" },
+    .{ "VkImage", "@import(\"vulkan\").Image" },
+    .{ "VkInstance", "@import(\"vulkan\").Instance" },
+    .{ "VkInstanceCreateInfo", "@import(\"vulkan\").InstanceCreateInfo" },
+    .{ "VkPhysicalDevice", "@import(\"vulkan\").PhysicalDevice" },
+    .{ "VkResult", "@import(\"vulkan\").Result" },
+    .{ "PFN_vkGetInstanceProcAddr", "@import(\"vulkan\").PfnGetInstanceProcAddr" },
 });
+
+// const foreign_types = std.StaticStringMap([]const u8).initComptime(.{
+//     .{ "Display", "opaque {}" },
+//     .{ "VisualID", @typeName(c_uint) },
+//     .{ "Window", @typeName(c_ulong) },
+//     .{ "RROutput", @typeName(c_ulong) },
+//     .{ "wl_display", "opaque {}" },
+//     .{ "wl_surface", "opaque {}" },
+//     .{ "HINSTANCE", "std.os.windows.HINSTANCE" },
+//     .{ "HWND", "std.os.windows.HWND" },
+//     .{ "HMONITOR", "*opaque {}" },
+//     .{ "HANDLE", "std.os.windows.HANDLE" },
+//     .{ "SECURITY_ATTRIBUTES", "std.os.windows.SECURITY_ATTRIBUTES" },
+//     .{ "DWORD", "std.os.windows.DWORD" },
+//     .{ "LPCWSTR", "std.os.windows.LPCWSTR" },
+//     .{ "xcb_connection_t", "opaque {}" },
+//     .{ "xcb_visualid_t", @typeName(u32) },
+//     .{ "xcb_window_t", @typeName(u32) },
+//     .{ "zx_handle_t", @typeName(u32) },
+//     .{ "_screen_context", "opaque {}" },
+//     .{ "_screen_window", "opaque {}" },
+//     .{ "IDirectFB", "opaque {}" },
+//     .{ "IDirectFBSurface", "opaque {}" },
+//     .{ "NvSciSyncAttrList", "*opaque{}" },
+//     .{ "NvSciSyncObj", "*opaque{}" },
+//     .{ "NvSciSyncFence", "*opaque{}" },
+//     .{ "NvSciBufAttrList", "*opaque{}" },
+//     .{ "NvSciBufObj", "*opaque{}" },
+//     // We don't know the true size of these but whatever Stadia is dead anyway.
+//     .{ "GgpStreamDescriptor", "*opaque{}" },
+//     .{ "GgpFrameToken", "*opaque{}" },
+//     // The Vulkan Video tokens cannot be "opaque {}" and have to be handled
+//     // separately.
+//     .{ "StdVideoVP9Profile", "u32" },
+//     .{ "StdVideoVP9Level", "u32" },
+// });
 
 const CommandDispatchType = enum {
     base,
@@ -1017,7 +1039,23 @@ const Renderer = struct {
     }
 
     fn renderContainerDefaultField(self: *Self, name: []const u8, container: reg.Container, field: reg.Container.Field) !void {
-        if (field.field_type == .name and mem.eql(u8, "VkBool32", field.field_type.name) and isFeatureStruct(name, container.extends)) {
+        if (mem.eql(u8, field.name, "sType") or mem.eql(u8, field.name, "type")) {
+            if (container.stype == null) {
+                return;
+            }
+
+            const stype = container.stype.?;
+            if (!mem.startsWith(u8, stype, "XR_TYPE_")) {
+                return error.InvalidRegistry;
+            }
+
+            // Some structures dont have a VK_STRUCTURE_TYPE for some reason apparently...
+            // See https://github.com/KhronosGroup/Vulkan-Docs/issues/1225
+            _ = self.structure_types.get(stype) orelse return;
+
+            try self.writer.writeAll(" = .");
+            try self.writeIdentifierWithCase(.snake, stype["XR_".len..]);
+        } else if (field.field_type == .name and mem.eql(u8, "XrBool32", field.field_type.name) and isFeatureStruct(name, container.extends)) {
             try self.writer.writeAll(" = .false");
         } else if (field.is_optional) {
             if (field.field_type == .name) {
@@ -1029,7 +1067,7 @@ const Renderer = struct {
                         try self.writer.writeAll(" = .{}");
                     } else if (decl_type == .typedef and decl_type.typedef == .command_ptr) {
                         try self.writer.writeAll(" = null");
-                    } else if (mem.eql(u8, "VkBool32", field.field_type.name)) {
+                    } else if (mem.eql(u8, "XrBool32", field.field_type.name)) {
                         try self.writer.writeAll(" = .false");
                     } else if ((decl_type == .typedef and builtin_types.has(decl_type.typedef.name)) or
                         (decl_type == .foreign and builtin_types.has(field_type_name)))

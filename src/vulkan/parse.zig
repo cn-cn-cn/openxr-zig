@@ -228,7 +228,7 @@ fn parseContainer(allocator: Allocator, ty: *xml.Element, is_union: bool, api: r
 
         var xctok = cparse.XmlCTokenizer.init(member);
         members[i] = try cparse.parseMember(allocator, &xctok, false);
-        if (mem.eql(u8, members[i].name, "sType")) {
+        if (mem.eql(u8, members[i].name, "sType") or mem.eql(u8, members[i].name, "type")) {
             if (member.getAttribute("values")) |stype| {
                 maybe_stype = stype;
             }
