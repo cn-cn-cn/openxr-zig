@@ -28,15 +28,15 @@ jobs:
         sudo apt update
         sudo apt install libopenxr-loader1
 
-    - name: Fetch latest xr.xml
-      run: |
-        wget https://raw.githubusercontent.com/KhronosGroup/OpenXR-SDK/refs/heads/main/specification/registry/xr.xml
+    # - name: Fetch latest xr.xml
+    #   run: |
+    #     wget https://raw.githubusercontent.com/KhronosGroup/OpenXR-SDK/refs/heads/main/specification/registry/xr.xml
 
-    - name: Test and install with latest zig & latest vk.xml
-      run: zig build test install -Dregistry=$(pwd)/xr.xml
+    - name: Install generator
+      run: zig build
 
     - name: Generate xr.zig
-      run: zig-out/bin/openxr-zig-generator xr.xml xr.zig
+      run: zig-out/bin/openxr-zig-generator examples-openxr/xr.xml xr.zig
 
     - name: Sanity-check xr.zig
       run: zig build-obj xr.zig
@@ -44,6 +44,9 @@ jobs:
     - name: Build example
       run: zig build
       working-directory: ./examples-openxr
+
+    - name: Test and install with latest zig & latest vk.xml
+      run: zig build test install -Dregistry=$(pwd)/examples-openxr/xr.xml
 
     # - name: Test and install with latest zig & latest vk.xml & latest video.xml
     #   run: zig build test install -p zig-out-video -Dregistry=$(pwd)/vk.xml -Dvideo=$(pwd)/video.xml
