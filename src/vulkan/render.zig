@@ -658,7 +658,7 @@ const Renderer = struct {
         }
 
         try self.renderCommandPtrs();
-        try self.renderFeatureInfo();
+        // try self.renderFeatureInfo();
         try self.renderExtensionInfo();
         try self.renderDispatchTables();
         try self.renderWrappers();
@@ -1327,7 +1327,7 @@ const Renderer = struct {
 
     fn renderDispatchTables(self: *Self) !void {
         try self.renderDispatchTable(.base);
-        // try self.renderDispatchTable(.instance);
+        try self.renderDispatchTable(.instance);
         // try self.renderDispatchTable(.device);
     }
 
@@ -1360,7 +1360,7 @@ const Renderer = struct {
     fn renderWrappers(self: *Self) !void {
         try self.writer.writeAll(command_flags_mixin);
         try self.renderWrappersOfDispatchType(.base);
-        // try self.renderWrappersOfDispatchType(.instance);
+        try self.renderWrappersOfDispatchType(.instance);
         // try self.renderWrappersOfDispatchType(.device);
     }
 
