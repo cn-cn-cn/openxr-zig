@@ -184,7 +184,6 @@ const builtin_types = std.StaticStringMap([]const u8).initComptime(.{
     .{ "int", @typeName(c_int) },
 });
 
-
 const foreign_types = std.StaticStringMap([]const u8).initComptime(.{
     .{ "Display", "opaque {}" },
     .{ "VisualID", @typeName(c_uint) },

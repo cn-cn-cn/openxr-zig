@@ -3,10 +3,10 @@ const xr = @import("openxr");
 const c = @import("c.zig");
 const Allocator = std.mem.Allocator;
 
-pub const VkInstance = *opaque{};
-pub const VkPhysicalDevice = *opaque{};
-pub const VkResult = *opaque{};
-pub const VkDevice = *opaque{};
+pub const VkInstance = *opaque {};
+pub const VkPhysicalDevice = *opaque {};
+pub const VkResult = *opaque {};
+pub const VkDevice = *opaque {};
 pub const wchar_t = u16;
 
 const BaseDispatch = xr.BaseWrapper;
