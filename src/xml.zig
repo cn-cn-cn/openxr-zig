@@ -17,6 +17,7 @@ pub const Content = union(enum) {
 
 pub const Element = struct {
     tag: []const u8,
+    is_special: bool,
     attributes: []Attribute = &.{},
     children: []Content = &.{},
 
@@ -228,11 +229,11 @@ const Parser = struct {
 
     fn currentLine(self: Parser) []const u8 {
         var begin: usize = 0;
-        if (mem.lastIndexOfScalar(u8, self.source[0..self.offset], '\n')) |prev_nl| {
+        if (mem.findScalarLast(u8, self.source[0..self.offset], '\n')) |prev_nl| {
             begin = prev_nl + 1;
         }
 
-        const end = mem.indexOfScalarPos(u8, self.source, self.offset, '\n') orelse self.source.len;
+        const end = mem.findScalarPos(u8, self.source, self.offset, '\n') orelse self.source.len;
         return self.source[begin..end];
     }
 };
@@ -313,13 +314,24 @@ fn parseDocument(parser: *Parser, backing_allocator: Allocator) !Document {
 
     const allocator = doc.arena.allocator();
 
-    try skipComments(parser, allocator);
+    while (true) {
+        _ = parser.eatWs();
+        try skipComments(parser, allocator);
 
-    doc.xml_decl = try parseElement(parser, allocator, .xml_decl);
-    _ = parser.eatWs();
-    try skipComments(parser, allocator);
+        const next_elem = (try parseElement(parser, allocator)) orelse return error.InvalidDocument;
+        if (std.mem.eql(u8, next_elem.tag, "xml")) {
+            if (doc.xml_decl != null) return error.InvalidDocument;
+            doc.xml_decl = next_elem;
+        } else if (std.mem.eql(u8, next_elem.tag, "!DOCTYPE")) {
+            // TODO: ?
+        } else if (next_elem.is_special) {
+            // TODO: ?
+        } else {
+            doc.root = next_elem;
+            break;
+        }
+    }
 
-    doc.root = (try parseElement(parser, allocator, .element)) orelse return error.InvalidDocument;
     _ = parser.eatWs();
     try skipComments(parser, allocator);
 
@@ -392,7 +404,7 @@ fn parseContent(parser: *Parser, alloc: Allocator) ParseError!Content {
         return Content{ .char_data = cd };
     } else if (try parseComment(parser, alloc)) |comment| {
         return Content{ .comment = comment };
-    } else if (try parseElement(parser, alloc, .element)) |elem| {
+    } else if (try parseElement(parser, alloc)) |elem| {
         return Content{ .element = elem };
     } else {
         return error.UnexpectedCharacter;
@@ -402,6 +414,12 @@ fn parseContent(parser: *Parser, alloc: Allocator) ParseError!Content {
 fn parseAttr(parser: *Parser, alloc: Allocator) !?Attribute {
     const name = parseNameNoDupe(parser) catch return null;
     _ = parser.eatWs();
+    if (parser.peek() != '=') {
+        return .{
+            .name = try alloc.dupe(u8, name),
+            .value = "",
+        };
+    }
     try parser.expect('=');
     _ = parser.eatWs();
     const value = try parseAttrValue(parser, alloc);
@@ -413,30 +431,17 @@ fn parseAttr(parser: *Parser, alloc: Allocator) !?Attribute {
     return attr;
 }
 
-const ElementKind = enum {
-    xml_decl,
-    element,
-};
-
-fn parseElement(parser: *Parser, alloc: Allocator, comptime kind: ElementKind) !?*Element {
+fn parseElement(parser: *Parser, alloc: Allocator) !?*Element {
     const start = parser.offset;
 
-    const tag = switch (kind) {
-        .xml_decl => blk: {
-            if (!parser.eatStr("<?") or !mem.eql(u8, try parseNameNoDupe(parser), "xml")) {
-                parser.offset = start;
-                return null;
-            }
-            break :blk "xml";
-        },
-        .element => blk: {
-            if (!parser.eat('<')) return null;
-            const tag = parseNameNoDupe(parser) catch {
-                parser.offset = start;
-                return null;
-            };
-            break :blk tag;
-        },
+    try parser.expect('<');
+
+    const is_special = parser.eat('?');
+    const is_doctype = !is_special and parser.peek() == '!';
+
+    const tag = parseNameNoDupe(parser) catch {
+        parser.offset = start;
+        return null;
     };
 
     var attributes: std.ArrayList(Attribute) = .empty;
@@ -450,37 +455,37 @@ fn parseElement(parser: *Parser, alloc: Allocator, comptime kind: ElementKind) !
         try attributes.append(alloc, attr);
     }
 
-    switch (kind) {
-        .xml_decl => try parser.expectStr("?>"),
-        .element => {
-            if (!parser.eatStr("/>")) {
-                try parser.expect('>');
+    if (is_special) {
+        try parser.expectStr("?>");
+    } else if (is_doctype) {
+        try parser.expect('>');
+    } else if (!parser.eatStr("/>")) {
+        try parser.expect('>');
 
-                while (true) {
-                    if (parser.peek() == null) {
-                        return error.UnexpectedEof;
-                    } else if (parser.eatStr("</")) {
-                        break;
-                    }
-
-                    const content = try parseContent(parser, alloc);
-                    try children.append(alloc, content);
-                }
-
-                const closing_tag = try parseNameNoDupe(parser);
-                if (!mem.eql(u8, tag, closing_tag)) {
-                    return error.NonMatchingClosingTag;
-                }
-
-                _ = parser.eatWs();
-                try parser.expect('>');
+        while (true) {
+            if (parser.peek() == null) {
+                return error.UnexpectedEof;
+            } else if (parser.eatStr("</")) {
+                break;
             }
-        },
+
+            const content = try parseContent(parser, alloc);
+            try children.append(alloc, content);
+        }
+
+        const closing_tag = try parseNameNoDupe(parser);
+        if (!mem.eql(u8, tag, closing_tag)) {
+            return error.NonMatchingClosingTag;
+        }
+
+        _ = parser.eatWs();
+        try parser.expect('>');
     }
 
     const element = try alloc.create(Element);
     element.* = .{
         .tag = try alloc.dupe(u8, tag),
+        .is_special = is_special,
         .attributes = try attributes.toOwnedSlice(alloc),
         .children = try children.toOwnedSlice(alloc),
     };
@@ -494,13 +499,13 @@ test "xml: parseElement" {
 
     {
         var parser = Parser.init("<= a='b'/>");
-        try testing.expectEqual(@as(?*Element, null), try parseElement(&parser, alloc, .element));
+        try testing.expectEqual(@as(?*Element, null), try parseElement(&parser, alloc));
         try testing.expectEqual(@as(?u8, '<'), parser.peek());
     }
 
     {
         var parser = Parser.init("<python size='15' color = \"green\"/>");
-        const elem = try parseElement(&parser, alloc, .element);
+        const elem = try parseElement(&parser, alloc);
         try testing.expectEqualSlices(u8, elem.?.tag, "python");
 
         const size_attr = elem.?.attributes[0];
@@ -514,14 +519,14 @@ test "xml: parseElement" {
 
     {
         var parser = Parser.init("<python>test</python>");
-        const elem = try parseElement(&parser, alloc, .element);
+        const elem = try parseElement(&parser, alloc);
         try testing.expectEqualSlices(u8, elem.?.tag, "python");
         try testing.expectEqualSlices(u8, elem.?.children[0].char_data, "test");
     }
 
     {
         var parser = Parser.init("<a>b<c/>d<e/>f<!--g--></a>");
-        const elem = try parseElement(&parser, alloc, .element);
+        const elem = try parseElement(&parser, alloc);
         try testing.expectEqualSlices(u8, elem.?.tag, "a");
         try testing.expectEqualSlices(u8, elem.?.children[0].char_data, "b");
         try testing.expectEqualSlices(u8, elem.?.children[1].element.tag, "c");
@@ -539,13 +544,13 @@ test "xml: parse prolog" {
 
     {
         var parser = Parser.init("<?xmla version='aa'?>");
-        try testing.expectEqual(@as(?*Element, null), try parseElement(&parser, a, .xml_decl));
+        try testing.expectEqual(@as(?*Element, null), try parseElement(&parser, a));
         try testing.expectEqual(@as(?u8, '<'), parser.peek());
     }
 
     {
         var parser = Parser.init("<?xml version='aa'?>");
-        const decl = try parseElement(&parser, a, .xml_decl);
+        const decl = try parseElement(&parser, a);
         try testing.expectEqualSlices(u8, "aa", decl.?.getAttribute("version").?);
         try testing.expectEqual(@as(?[]const u8, null), decl.?.getAttribute("encoding"));
         try testing.expectEqual(@as(?[]const u8, null), decl.?.getAttribute("standalone"));
@@ -553,7 +558,7 @@ test "xml: parse prolog" {
 
     {
         var parser = Parser.init("<?xml version=\"ccc\" encoding = 'bbb' standalone   \t =   'yes'?>");
-        const decl = try parseElement(&parser, a, .xml_decl);
+        const decl = try parseElement(&parser, a);
         try testing.expectEqualSlices(u8, "ccc", decl.?.getAttribute("version").?);
         try testing.expectEqualSlices(u8, "bbb", decl.?.getAttribute("encoding").?);
         try testing.expectEqualSlices(u8, "yes", decl.?.getAttribute("standalone").?);
@@ -603,7 +608,7 @@ fn unescape(arena: Allocator, text: []const u8) ![]const u8 {
     var i: usize = 0;
     while (i < text.len) : (j += 1) {
         if (text[i] == '&') {
-            const entity_end = 1 + (mem.indexOfScalarPos(u8, text, i, ';') orelse return error.InvalidEntity);
+            const entity_end = 1 + (mem.findScalarPos(u8, text, i, ';') orelse return error.InvalidEntity);
             unescaped[j] = try unescapeEntity(text[i..entity_end]);
             i = entity_end;
         } else {
