@@ -776,20 +776,20 @@ const Renderer = struct {
                 @as([]const u8, if (bitflag_name.tag) |tag| tag else ""),
             });
             return;
-        } else if (mem.startsWith(u8, name, "vk")) {
+        } else if (mem.startsWith(u8, name, "xr")) {
             // Function type, always render with the exact same text for linking purposes.
             try self.writeIdentifier(name);
             return;
-        } else if (mem.startsWith(u8, name, "Vk")) {
+        } else if (mem.startsWith(u8, name, "Xr")) {
             // Type, strip namespace and write, as they are alreay in title case.
             try self.writeIdentifier(name[2..]);
             return;
-        } else if (mem.startsWith(u8, name, "PFN_vk")) {
-            // Function pointer type, strip off the PFN_vk part and replace it with Pfn. Note that
+        } else if (mem.startsWith(u8, name, "PFN_xr")) {
+            // Function pointer type, strip off the PFN_xr part and replace it with Pfn. Note that
             // this function is only called to render the typedeffed function pointers like vkVoidFunction
             try self.writeIdentifierFmt("Pfn{s}", .{name[6..]});
             return;
-        } else if (mem.startsWith(u8, name, "VK_")) {
+        } else if (mem.startsWith(u8, name, "XR_")) {
             // Constants
             try self.writeIdentifier(name[3..]);
             return;
@@ -901,9 +901,8 @@ const Renderer = struct {
     }
 
     fn renderSpecial(self: *Self, name: []const u8) !bool {
-        const maybe_author = self.id_renderer.getAuthorTag(name);
         const basename = self.id_renderer.stripAuthorTag(name);
-        if (std.mem.eql(u8, basename, "VkBool32")) {
+        if (std.mem.eql(u8, basename, "XrBool32")) {
             try self.renderAssign(name);
             try self.writer.writeAll(
                 \\enum(u32) {
@@ -911,135 +910,6 @@ const Renderer = struct {
                 \\    true,
                 \\};
                 \\
-            );
-        } else if (std.mem.eql(u8, basename, "VkAccelerationStructureInstance")) {
-            try self.renderAssign(name);
-            try self.writer.print(
-                \\extern struct {{
-                \\    transform: TransformMatrix{s},
-                \\    instance_custom_index_and_mask: packed struct(u32) {{
-                \\        instance_custom_index: u24,
-                \\        mask: u8,
-                \\    }},
-                \\    instance_shader_binding_table_record_offset_and_flags: packed struct(u32) {{
-                \\        instance_shader_binding_table_record_offset: u24,
-                \\        flags: u8, // GeometryInstanceFlagsKHR
-                \\    }},
-                \\    acceleration_structure_reference: u64,
-                \\}};
-                \\
-            ,
-                .{maybe_author orelse ""},
-            );
-        } else if (std.mem.eql(u8, basename, "VkAccelerationStructureSRTMotionInstance")) {
-            try self.renderAssign(name);
-            try self.writer.print(
-                \\extern struct {{
-                \\    transform_t0: SRTData{0s},
-                \\    transform_t1: SRTData{0s},
-                \\    instance_custom_index_and_mask: packed struct(u32) {{
-                \\        instance_custom_index: u24,
-                \\        mask: u8,
-                \\    }},
-                \\    instance_shader_binding_table_record_offset_and_flags: packed struct(u32) {{
-                \\        instance_shader_binding_table_record_offset: u24,
-                \\        flags: u8, // GeometryInstanceFlagsKHR
-                \\    }},
-                \\    acceleration_structure_reference: u64,
-                \\}};
-                \\
-            ,
-                .{maybe_author orelse ""},
-            );
-        } else if (std.mem.eql(u8, basename, "VkAccelerationStructureMatrixMotionInstance")) {
-            try self.renderAssign(name);
-            try self.writer.print(
-                \\extern struct {{
-                \\    transform_t0: TransformMatrix{0s},
-                \\    transform_t1: TransformMatrix{0s},
-                \\    instance_custom_index_and_mask: packed struct(u32) {{
-                \\        instance_custom_index: u24,
-                \\        mask: u8,
-                \\    }},
-                \\    instance_shader_binding_table_record_offset_and_flags: packed struct(u32) {{
-                \\        instance_shader_binding_table_record_offset: u24,
-                \\        flags: u8, // GeometryInstanceFlagsKHR
-                \\    }},
-                \\    acceleration_structure_reference: u64,
-                \\}};
-                \\
-            ,
-                .{maybe_author orelse ""},
-            );
-        } else if (std.mem.eql(u8, basename, "VkClusterAccelerationStructureBuildTriangleClusterInfo")) {
-            try self.renderAssign(name);
-            try self.writer.print(
-                \\extern struct {{
-                \\    cluster_id: u32,
-                \\    cluster_flags: ClusterAccelerationStructureClusterFlags{0s},
-                \\    cluster_data: packed struct(u32) {{
-                \\        triangle_count: u9,
-                \\        vertex_count: u9,
-                \\        position_truncate_bit_count: u6,
-                \\        index_type: u4,
-                \\        opacity_micromap_index_type: u4,
-                \\    }},
-                \\    base_geometry_index_and_geometry_flags: ClusterAccelerationStructureGeometryIndexAndGeometryFlags{0s},
-                \\    index_buffer_stride: u16,
-                \\    vertex_buffer_stride: u16,
-                \\    geometry_index_and_flags_buffer_stride: u16,
-                \\    opacity_micromap_index_buffer_stride: u16,
-                \\    index_buffer: DeviceAddress,
-                \\    vertex_buffer: DeviceAddress,
-                \\    geometry_index_and_flags_buffer: DeviceAddress,
-                \\    opacity_micromap_array: DeviceAddress,
-                \\    opacity_micromap_index_buffer: DeviceAddress,
-                \\}};
-            ,
-                .{maybe_author orelse ""},
-            );
-        } else if (std.mem.eql(u8, basename, "VkClusterAccelerationStructureBuildTriangleClusterTemplateInfo")) {
-            try self.renderAssign(name);
-            try self.writer.print(
-                \\extern struct {{
-                \\    cluster_id: u32,
-                \\    cluster_flags: ClusterAccelerationStructureClusterFlags{0s},
-                \\    cluster_data: packed struct(u32) {{
-                \\        triangle_count: u9,
-                \\        vertex_count: u9,
-                \\        position_truncate_bit_count: u6,
-                \\        index_type: u4,
-                \\        opacity_micromap_index_type: u4,
-                \\    }},
-                \\    base_geometry_index_and_geometry_flags: ClusterAccelerationStructureGeometryIndexAndGeometryFlags{0s},
-                \\    index_buffer_stride: u16,
-                \\    vertex_buffer_stride: u16,
-                \\    geometry_index_and_flags_buffer_stride: u16,
-                \\    opacity_micromap_index_buffer_stride: u16,
-                \\    index_buffer: DeviceAddress,
-                \\    vertex_buffer: DeviceAddress,
-                \\    geometry_index_and_flags_buffer: DeviceAddress,
-                \\    opacity_micromap_array: DeviceAddress,
-                \\    opacity_micromap_index_buffer: DeviceAddress,
-                \\    instantiation_bounding_box_limit: DeviceAddress,
-                \\}};
-            ,
-                .{maybe_author orelse ""},
-            );
-        } else if (std.mem.eql(u8, basename, "VkClusterAccelerationStructureInstantiateClusterInfo")) {
-            try self.renderAssign(name);
-            try self.writer.print(
-                \\extern struct {{
-                \\    cluster_id_offset: u32,
-                \\    geometry_index_offset: packed struct(u32) {{
-                \\       offset: u24,
-                \\       reserved: u8 = 0,
-                \\    }},
-                \\    cluster_template_address: DeviceAddress,
-                \\    vertex_buffer: StridedDeviceAddress{0s},
-                \\}};
-            ,
-                .{maybe_author orelse ""},
             );
         } else {
             return false;
@@ -1150,23 +1020,7 @@ const Renderer = struct {
     }
 
     fn renderContainerDefaultField(self: *Self, name: []const u8, container: reg.Container, field: reg.Container.Field) !void {
-        if (mem.eql(u8, field.name, "sType")) {
-            if (container.stype == null) {
-                return;
-            }
-
-            const stype = container.stype.?;
-            if (!mem.startsWith(u8, stype, "VK_STRUCTURE_TYPE_")) {
-                return error.InvalidRegistry;
-            }
-
-            // Some structures dont have a VK_STRUCTURE_TYPE for some reason apparently...
-            // See https://github.com/KhronosGroup/Vulkan-Docs/issues/1225
-            _ = self.structure_types.get(stype) orelse return;
-
-            try self.writer.writeAll(" = .");
-            try self.writeIdentifierWithCase(.snake, stype["VK_STRUCTURE_TYPE_".len..]);
-        } else if (field.field_type == .name and mem.eql(u8, "VkBool32", field.field_type.name) and isFeatureStruct(name, container.extends)) {
+        if (field.field_type == .name and mem.eql(u8, "VkBool32", field.field_type.name) and isFeatureStruct(name, container.extends)) {
             try self.writer.writeAll(" = .false");
         } else if (field.is_optional) {
             if (field.field_type == .name) {
@@ -1580,10 +1434,10 @@ const Renderer = struct {
     }
 
     fn renderProxies(self: *Self) !void {
-        try self.renderProxy(.instance, "VkInstance", true);
-        try self.renderProxy(.device, "VkDevice", true);
-        try self.renderProxy(.device, "VkCommandBuffer", false);
-        try self.renderProxy(.device, "VkQueue", false);
+        try self.renderProxy(.instance, "XrInstance", true);
+        // try self.renderProxy(.device, "VkDevice", true);
+        // try self.renderProxy(.device, "VkCommandBuffer", false);
+        // try self.renderProxy(.device, "VkQueue", false);
     }
 
     fn renderProxy(
@@ -2215,7 +2069,7 @@ const Renderer = struct {
     fn renderErrorSet(self: *Self, errors: []const []const u8) !void {
         try self.writer.writeAll("error{");
         for (errors) |name| {
-            if (std.mem.eql(u8, name, "VK_ERROR_UNKNOWN")) {
+            if (std.mem.eql(u8, name, "XR_ERROR_UNKNOWN")) {
                 continue;
             }
             try self.renderResultAsErrorName(name);
@@ -2225,7 +2079,7 @@ const Renderer = struct {
     }
 
     fn renderResultAsErrorName(self: *Self, name: []const u8) !void {
-        const error_prefix = "VK_ERROR_";
+        const error_prefix = "XR_ERROR_";
         if (mem.startsWith(u8, name, error_prefix)) {
             try self.writeIdentifierWithCase(.title, name[error_prefix.len..]);
         } else {
