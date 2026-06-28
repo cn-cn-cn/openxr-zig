@@ -1,3 +1,18 @@
+# TODO
+- find a way to use the nice wrapper types while setting type to the right value
+- audit
+- find more things to add
+
+## openxr-zig
+
+An OpenXR bindings generator for Zig.
+
+The aim of this project is to build closely on top of vulkan-zig for ease of maintenance.
+
+Also, code from [openxr-zig](<https://github.com/s-ol/openxr-zig/>) (abandoned) is used.
+
+### original readme:
+
 # vulkan-zig
 
 A Vulkan binding generator for Zig.
