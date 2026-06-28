@@ -908,6 +908,7 @@ const Renderer = struct {
                 \\};
                 \\
             );
+        } else if (std.mem.eql(u8, basename, "XrVersion")) {
         } else {
             return false;
         }
