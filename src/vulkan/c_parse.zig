@@ -32,7 +32,7 @@ pub const Token = struct {
         rbracket,
         kw_typedef,
         kw_const,
-        kw_vkapi_ptr,
+        kw_xrapi_ptr,
         kw_struct,
     };
 };
@@ -77,8 +77,8 @@ pub const CTokenizer = struct {
             Token.Kind.kw_typedef
         else if (mem.eql(u8, token_text, "const"))
             Token.Kind.kw_const
-        else if (mem.eql(u8, token_text, "VKAPI_PTR"))
-            Token.Kind.kw_vkapi_ptr
+        else if (mem.eql(u8, token_text, "XRAPI_PTR"))
+            Token.Kind.kw_xrapi_ptr
         else if (mem.eql(u8, token_text, "struct"))
             Token.Kind.kw_struct
         else
@@ -433,14 +433,14 @@ fn parseDeclaration(allocator: Allocator, xctok: *XmlCTokenizer, ptrs_optional: 
     };
 }
 
-// FNPTRSUFFIX = kw_vkapi_ptr '*' name' ')' '(' ('void' | (DECLARATION (',' DECLARATION)*)?) ')'
+// FNPTRSUFFIX = kw_xrapi_ptr '*' name' ')' '(' ('void' | (DECLARATION (',' DECLARATION)*)?) ')'
 fn parseFnPtrSuffix(allocator: Allocator, xctok: *XmlCTokenizer, return_type: TypeInfo, ptrs_optional: bool) !?Declaration {
     const lparen = try xctok.peek();
     if (lparen == null or lparen.?.kind != .lparen) {
         return null;
     }
     _ = try xctok.nextNoEof();
-    _ = try xctok.expect(.kw_vkapi_ptr);
+    _ = try xctok.expect(.kw_xrapi_ptr);
     _ = try xctok.expect(.star);
     const name = try xctok.expect(.name);
     _ = try xctok.expect(.rparen);
@@ -578,12 +578,12 @@ pub fn parseVersion(xctok: *XmlCTokenizer) !registry.ApiConstant.Value {
     }
 
     _ = try xctok.expect(.name);
-    const vk_make_version = try xctok.expect(.type_name);
-    if (mem.eql(u8, vk_make_version.text, "VK_MAKE_API_VERSION")) {
+    const xr_make_version = try xctok.expect(.type_name);
+    if (mem.eql(u8, xr_make_version.text, "XR_MAKE_VERSION")) {
         return .{
             .version = try parseVersionValues(xctok, 4),
         };
-    } else if (mem.eql(u8, vk_make_version.text, "VK_MAKE_VIDEO_STD_VERSION")) {
+    } else if (mem.eql(u8, xr_make_version.text, "XR_MAKE_VIDEO_STD_VERSION")) {
         return .{
             .video_std_version = try parseVersionValues(xctok, 3),
         };
@@ -621,7 +621,7 @@ fn testTokenizer(tokenizer: anytype, expected_tokens: []const Token) !void {
 }
 
 test "CTokenizer" {
-    var ctok = CTokenizer{ .source = "typedef ([const)]** VKAPI_PTR 123,;aaaa" };
+    var ctok = CTokenizer{ .source = "typedef ([const)]** XRAPI_PTR 123,;aaaa" };
 
     try testTokenizer(&ctok, &[_]Token{
         .{ .kind = .kw_typedef, .text = "typedef" },
@@ -632,7 +632,7 @@ test "CTokenizer" {
         .{ .kind = .rbracket, .text = "]" },
         .{ .kind = .star, .text = "*" },
         .{ .kind = .star, .text = "*" },
-        .{ .kind = .kw_vkapi_ptr, .text = "VKAPI_PTR" },
+        .{ .kind = .kw_xrapi_ptr, .text = "XRAPI_PTR" },
         .{ .kind = .int, .text = "123" },
         .{ .kind = .comma, .text = "," },
         .{ .kind = .semicolon, .text = ";" },
@@ -643,7 +643,7 @@ test "CTokenizer" {
 test "XmlCTokenizer" {
     const document = try xml.parse(testing.allocator,
         \\<root>// comment <name>commented name</name> <type>commented type</type> trailing
-        \\    typedef void (VKAPI_PTR *<name>PFN_vkVoidFunction</name>)(void);
+        \\    typedef void (XRAPI_PTR *<name>PFN_xrVoidFunction</name>)(void);
         \\</root>
     );
     defer document.deinit();
@@ -654,9 +654,9 @@ test "XmlCTokenizer" {
         .{ .kind = .kw_typedef, .text = "typedef" },
         .{ .kind = .id, .text = "void" },
         .{ .kind = .lparen, .text = "(" },
-        .{ .kind = .kw_vkapi_ptr, .text = "VKAPI_PTR" },
+        .{ .kind = .kw_xrapi_ptr, .text = "XRAPI_PTR" },
         .{ .kind = .star, .text = "*" },
-        .{ .kind = .name, .text = "PFN_vkVoidFunction" },
+        .{ .kind = .name, .text = "PFN_xrVoidFunction" },
         .{ .kind = .rparen, .text = ")" },
         .{ .kind = .lparen, .text = "(" },
         .{ .kind = .id, .text = "void" },
